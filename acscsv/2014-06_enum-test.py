@@ -8,7 +8,7 @@ import json
 import acscsv
 
 # for custom twitter output, import both the fields module and the code module
-from twitter_acs_Fields import *
+from twitter_acs_fields import *
 import twitter_acs
 
 
@@ -21,7 +21,7 @@ import twitter_acs
 #
 # edit the subclass here, as needed (eg inherit from twitter_acs.TwacsCSV)
 #
-class TestCSV( twitter_acs.TwacsCSV ):
+class CustomCSV( twitter_acs.TwacsCSV ):
     """
     Test class for experimenting with new output combinations. This class should inherit
     from the appropriate module.class in the core library. Compliance and invalid records 
@@ -39,17 +39,74 @@ class TestCSV( twitter_acs.TwacsCSV ):
         """
         output_list = [] 
 
-        # twitter country code
-        output_list.append( Field_location_twitter_country_code(d).value )
+        # test all the things 
 
-        # activity id 
-        output_list.append( Field_id(d).value )
+        #print >>sys.stderr, "*** object={}".format(Field_object(d).value)
 
-        # username 
-        output_list.append( Field_actor_preferredusername(d).value )
+        #output_list.append( Field_activity_type(d).value ) 
+        #output_list.append( Field_verb(d).value ) 
+        #output_list.append( Field_id(d).value ) 
+        #output_list.append( Field_objecttype(d).value ) 
+        #output_list.append( str(Field_object(d).value) ) 
+        #output_list.append( Field_postedtime(d).value )  
+        #output_list.append( Field_body(d).value )  
+        #output_list.append( Field_link(d).value )  
+        #output_list.append( Field_twitter_lang(d).value )  
+        #output_list.append( Field_favoritescount(d).value )  
+        #output_list.append( Field_retweetcount(d).value )  
+        #output_list.append( Field_twitter_filter_level(d).value )  
+        output_list.append( Field_inreplyto_link(d).value )  
 
-        # geo-tag coords (returns a list, cast to str)
-        output_list.append( str(Field_geo_coordinates(d).value) )
+
+
+#        Field_provider_objecttype
+#        Field_provider_displayname
+#        Field_provider_link
+#        Field_generator_displayname
+#        Field_generator_link
+#        Field_gnip_rules
+#        Field_gnip_urls
+#        Field_gnip_language_value
+#        Field_gnip_klout_score
+#        Field_gnip_klout_profile_topics
+#        Field_gnip_klout_profile_klout_user_id
+#        Field_gnip_klout_profile_link
+#        Field_actor_id
+#        Field_actor_objecttype
+#        Field_actor_postedtime
+#        Field_actor_displayname
+#        Field_actor_preferredusername
+#        Field_actor_summary
+#        Field_actor_link
+#        Field_actor_image
+#        Field_actor_language
+#        Field_actor_links
+#        Field_actor_twittertimezone
+#        Field_actor_utcoffset
+#        Field_actor_verified
+#        Field_actor_location_displayname
+#        Field_actor_location_objecttype
+#        Field_actor_followerscount
+#        Field_actor_friendscount
+#        Field_actor_listedcount
+#        Field_actor_statusesCount
+#        Field_actor_favoritesCount
+#        Field_twitter_entities_urls
+#        Field_twitter_entities_hashtags
+#        Field_twitter_entities_symbols
+#        Field_twitter_entities_user_mentions
+#        Field_twitter_entities_media
+#        Field_geo_type
+#        Field_geo_coordinates
+#        Field_location_displayname
+#        Field_location_name
+#        Field_location_objecttype
+#        Field_location_twitter_country_code
+#        Field_location_country_code
+#        Field_location_link
+#        Field_location_geo_type
+#        Field_location_geo_coordinates
+
 
 
         # done building output list 
@@ -66,7 +123,7 @@ if __name__ == "__main__":
     # Get the appropriate object by mocking the constructor in the main gnacs.py code. most 
     #   common command-line options (flags) don't matter since we're explicitly defining the 
     #   fields to be printed in the method above 
-    processing_obj = TestCSV("|", None, *[True]*7) 
+    processing_obj = CustomCSV("|", None, *[True]*7) 
 
     line_number = 0 
     for r in sys.stdin: 
