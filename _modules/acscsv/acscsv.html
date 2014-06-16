@@ -52,33 +52,156 @@
 <span class="c"># -*- coding: UTF-8 -*-</span>
 <span class="n">__author__</span><span class="o">=</span><span class="s">&quot;Scott Hendrickson&quot;</span>
 <span class="n">__license__</span><span class="o">=</span><span class="s">&quot;Simplified BSD&quot;</span>
+
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">datetime</span>
-<span class="kn">import</span> <span class="nn">json</span>
-<span class="kn">import</span> <span class="nn">unittest</span>
+<span class="kn">import</span> <span class="nn">fileinput</span>
+<span class="kn">from</span> <span class="nn">StringIO</span> <span class="kn">import</span> <span class="n">StringIO</span>
+<span class="c"># use fastest option available</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">ujson</span> <span class="kn">as</span> <span class="nn">json</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span> <span class="nn">json</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="kn">import</span> <span class="nn">simplejson</span> <span class="kn">as</span> <span class="nn">json</span>
+
+
 
 <span class="n">gnipError</span> <span class="o">=</span> <span class="s">&quot;GNIPERROR&quot;</span>
 <span class="n">gnipRemove</span> <span class="o">=</span> <span class="s">&quot;GNIPREMOVE&quot;</span>
 <span class="n">gnipDateTime</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s">&quot;%Y-%m-</span><span class="si">%d</span><span class="s">T%H:%M:%S.000Z&quot;</span><span class="p">)</span>
+<span class="n">INTERNAL_EMPTY_FIELD</span> <span class="o">=</span> <span class="s">&quot;GNIPEMPTYFIELD&quot;</span>
 
-<div class="viewcode-block" id="TestAcsCSV"><a class="viewcode-back" href="../../basic_csv.html#acscsv.acscsv.TestAcsCSV">[docs]</a><span class="k">class</span> <span class="nc">TestAcsCSV</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Unit tests ofr common CSV utility functions&quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">pass</span>
+<span class="k">class</span> <span class="nc">_Field</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base class for extracting the desired value at the end of a series of keys in a JSON Activity </span>
+<span class="sd">    Streams payload. Set the application-wide default value (for e.g. missing values) here, </span>
+<span class="sd">    but also use child classes to override when necessary. Subclasses also need to define the </span>
+<span class="sd">    key-path (path) to the desired location by overwriting the path attr.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="nf">tearDown</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">pass</span>
+    <span class="c"># set some default values; these can be overwritten in custom classes </span>
+    <span class="c"># twitter format</span>
+    <span class="n">default_t_fmt</span> <span class="o">=</span> <span class="s">&quot;%Y-%m-</span><span class="si">%d</span><span class="s">T%H:%M:%S.000Z&quot;</span> 
+    <span class="n">default_value</span> <span class="o">=</span> <span class="n">INTERNAL_EMPTY_FIELD</span>
+    <span class="c">#default_value = &quot;\\N&quot;           # escaped \N ==&gt; MySQL NULL</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="bp">None</span>                    <span class="c"># str representation of the field, often = str( self.value_list ) </span>
+    <span class="n">value_list</span> <span class="o">=</span> <span class="p">[</span> <span class="n">default_value</span> <span class="p">]</span>  <span class="c"># overwrite when value is most appropriately a list </span>
+    <span class="n">path</span> <span class="o">=</span> <span class="p">[]</span>                       <span class="c"># dict key-path to follow for desired value</span>
 
-    <span class="k">def</span> <span class="nf">testCleanField</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">a</span> <span class="o">=</span> <span class="n">AcsCSV</span><span class="p">(</span><span class="s">&quot;|&quot;</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">assertEquals</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">cleanField</span><span class="p">(</span><span class="s">&quot;laksjflasjdfl;a&quot;</span><span class="p">),</span> <span class="s">&quot;laksjflasjdfl;a&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">assertEquals</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">cleanField</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\r\n</span><span class="s"> </span><span class="se">\n\r</span><span class="s"> </span><span class="se">\r\r</span><span class="s"> </span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">),</span> <span class="s">&quot;&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">assertEquals</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">cleanField</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\r\n</span><span class="s">a </span><span class="se">\n\r</span><span class="s"> </span><span class="se">\r\r</span><span class="s"> a</span><span class="se">\n\n</span><span class="s">&quot;</span><span class="p">),</span> <span class="s">&quot;a       a&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">assertEquals</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">cleanField</span><span class="p">(</span><span class="s">&quot;asdf|asdf,,adsf|asdf&quot;</span><span class="p">),</span> <span class="s">&quot;asdf asdf,,adsf asdf&quot;</span><span class="p">)</span>
-        <span class="n">b</span> <span class="o">=</span> <span class="n">AcsCSV</span><span class="p">(</span><span class="s">&quot;,&quot;</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">assertEquals</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">cleanField</span><span class="p">(</span><span class="s">&quot;asdf|asdf,,adsf|asdf&quot;</span><span class="p">),</span> <span class="s">&quot;asdf|asdf  adsf|asdf&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">assertEquals</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">cleanField</span><span class="p">(</span><span class="mi">245</span><span class="p">),</span> <span class="s">&quot;245&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">assertEquals</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">cleanField</span><span class="p">(</span><span class="n">a</span><span class="p">),</span> <span class="s">&quot;None&quot;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">json_record</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">walk_path</span><span class="p">(</span><span class="n">json_record</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span>
+
+    <span class="k">def</span> <span class="nf">walk_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">json_record</span><span class="p">):</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">json_record</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">res</span> <span class="ow">or</span> <span class="p">(</span> <span class="nb">type</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="ow">is</span> <span class="nb">list</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">):</span>
+                <span class="c"># parenthetical clause for values with empty lists e.g. twitter_entities</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_value</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+        <span class="c"># handle the special case where the walk_path found null (JSON) which converts to </span>
+        <span class="c"># a Python None. Only use &quot;None&quot; (str version) if it&#39;s assigned to self.default_value </span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">res</span> <span class="k">if</span> <span class="n">res</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_value</span>
+        <span class="k">return</span> <span class="n">res</span>
+
+    <span class="k">def</span> <span class="nf">fix_length</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">iterable</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Take an iterable (typically a list) and an optional maximum length (limit). </span>
+<span class="sd">        If limit is not given, and the input iterable is not equal to self.default_value</span>
+<span class="sd">        (typically &quot;None&quot;), the input iterable is returned. If limit is given, the return</span>
+<span class="sd">        value is a list that is either truncated to the first limit items, or padded </span>
+<span class="sd">        with self.default_value until it is of size limit. Note: strings are iterables, </span>
+<span class="sd">        so if you pass this function a string, it will (optionally) truncate the </span>
+<span class="sd">        number of characters in the string according to limit. </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span> 
+
+        <span class="k">if</span> <span class="n">limit</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c"># no limits on the length of the result, so just return the original iterable</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">iterable</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c">#if len(iterable) == 0:</span>
+            <span class="k">if</span> <span class="n">iterable</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_value</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">iterable</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c"># if walk_path() finds the final key, but the value is an empty list </span>
+                <span class="c">#   (common for e.g. the contents of twitter_entities) </span>
+                <span class="c">#   overwrite self.value with a list of self.default_value and of length limit</span>
+                <span class="n">res</span> <span class="o">=</span> <span class="p">[</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_value</span> <span class="p">]</span><span class="o">*</span><span class="n">limit</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c"># found something useful in the iterable, either pad the list or truncate </span>
+                <span class="c">#   to end up with something of the proper length                                                                                                                                   </span>
+                <span class="n">current_length</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span> <span class="n">iterable</span> <span class="p">)</span> 
+                <span class="k">if</span> <span class="n">current_length</span> <span class="o">&lt;</span> <span class="n">limit</span><span class="p">:</span>
+                    <span class="n">res</span> <span class="o">=</span> <span class="n">iterable</span> <span class="o">+</span> <span class="p">[</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_value</span> 
+                                        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">limit</span> <span class="o">-</span> <span class="n">current_length</span><span class="p">)</span> <span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>  
+                    <span class="n">res</span> <span class="o">=</span> <span class="n">iterable</span><span class="p">[:</span><span class="n">limit</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">res</span>
+
+
+<span class="k">class</span> <span class="nc">_LimitedField</span><span class="p">(</span><span class="n">_Field</span><span class="p">):</span>
+    <span class="c">#TODO: is there a better way that this class and the fix_length() method in _Field class</span>
+    <span class="c">#       could be combined?</span>
+    <span class="sd">&quot;&quot;&quot;  </span>
+<span class="sd">    Takes JSON record (in python dict form) and optionally a maximum length (limit, </span>
+<span class="sd">    with default length=5). Uses parent class _Field() to assign the appropriate value </span>
+<span class="sd">    to self.value. When self.value is a list of dictionaries, </span>
+<span class="sd">    inheriting from _LimitedField() class allows for the extraction and combination of </span>
+<span class="sd">    an arbitrary number of fields within self.value into self.value_list.</span>
+
+<span class="sd">    Ex: if your class would lead to having </span>
+<span class="sd">    self.value = [ {&#39;a&#39;: 1, &#39;b&#39;: 2, &#39;c&#39;: 3}, {&#39;a&#39;: 4, &#39;b&#39;: 5, &#39;c&#39;: 6} ], and what you&#39;d like </span>
+<span class="sd">    is a list that looks like [ 1, 2, 4, 5 ], inheriting from _LimitedField() allows you </span>
+<span class="sd">    to overwrite the fields list ( fields=[&quot;a&quot;, &quot;b&quot;] ) to obtain this result. </span>
+<span class="sd">    Finally, self.value is set to a string representation of the final self.value_list.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fields</span> <span class="o">=</span> <span class="bp">None</span> 
+    
+    <span class="c">#TODO: set limit=None by default and just return as many as there are, otherwise (by specifying </span>
+    <span class="c">#    limit), return a maximum of limit.</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">json_record</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span>
+            <span class="n">_LimitedField</span> 
+            <span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">json_record</span><span class="p">)</span>
+        <span class="c"># self.value is possibly a list of dicts for each activity media object </span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fields</span><span class="p">:</span>
+            <span class="c"># start with default list full of the default_values</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">value_list</span> <span class="o">=</span> <span class="p">[</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_value</span> <span class="p">]</span><span class="o">*</span><span class="p">(</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fields</span><span class="p">)</span><span class="o">*</span><span class="n">limit</span> <span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_value</span><span class="p">:</span> 
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">):</span>   <span class="c"># iterate over the dicts in the list</span>
+                    <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">limit</span><span class="p">:</span>                   <span class="c"># ... up until you reach limit </span>
+                        <span class="k">for</span> <span class="n">j</span><span class="p">,</span><span class="n">y</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fields</span><span class="p">):</span>      <span class="c"># iterate over the dict keys </span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">value_list</span><span class="p">[</span> <span class="nb">len</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">fields</span> <span class="p">)</span><span class="o">*</span><span class="n">i</span> <span class="o">+</span> <span class="n">j</span> <span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span> <span class="bp">self</span><span class="o">.</span><span class="n">fields</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="p">]</span> 
+            <span class="c"># finally, str-ify the list</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_list</span> <span class="p">)</span>
+
+
+<span class="c"># TODO:</span>
+<span class="c"># - consolidate _LimitedField() &amp; fix_length() if possible </span>
+<span class="c"># - replace 2-level dict traversal (eg profileLocation base class) with acscsv.walk_path() or </span>
+<span class="c">#       similar helper method </span>
+
+<div class="viewcode-block" id="Hook_StringIO"><a class="viewcode-back" href="../../basic_csv.html#acscsv.acscsv.Hook_StringIO">[docs]</a><span class="k">class</span> <span class="nc">Hook_StringIO</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Reverse-engineer the openhook constructor to accept StringIO. Pass the StringIO object </span>
+<span class="sd">    through so FileInput will read a string. Think of it as a stupid version of open() that </span>
+<span class="sd">    returns the thing it&#39;s passed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stringio</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stringio</span> <span class="o">=</span> <span class="n">stringio</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Note that x and y are ignored - they&#39;re only included to match the signature of </span>
+<span class="sd">        FileInput&#39;s openhook argument.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stringio</span>
+
 </div>
 <div class="viewcode-block" id="AcsCSV"><a class="viewcode-back" href="../../basic_csv.html#acscsv.acscsv.AcsCSV">[docs]</a><span class="k">class</span> <span class="nc">AcsCSV</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Base class for all delimited list objects. Basic delimited list utility functions&quot;&quot;&quot;</span>
@@ -86,9 +209,33 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">delim</span> <span class="o">=</span> <span class="n">delim</span>
         <span class="k">if</span> <span class="n">delim</span> <span class="o">==</span> <span class="s">&quot;&quot;</span><span class="p">:</span>
             <span class="k">print</span> <span class="o">&gt;&gt;</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;Warning - Output has Null delimiter&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cnt</span> <span class="o">=</span> <span class="bp">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">options_keypath</span> <span class="o">=</span> <span class="n">options_keypath</span>
 
+
+<div class="viewcode-block" id="AcsCSV.file_reader"><a class="viewcode-back" href="../../basic_csv.html#acscsv.acscsv.AcsCSV.file_reader">[docs]</a>    <span class="k">def</span> <span class="nf">file_reader</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">options_filename</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Read arbitrary input file(s), yield individual record lines.&quot;&quot;&quot;</span>
+        <span class="n">line_number</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">options_filename</span><span class="p">,</span> <span class="n">StringIO</span><span class="p">):</span>
+            <span class="n">hook</span> <span class="o">=</span> <span class="n">Hook_StringIO</span><span class="p">(</span><span class="n">options_filename</span><span class="p">)</span> 
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">hook</span> <span class="o">=</span> <span class="n">fileinput</span><span class="o">.</span><span class="n">hook_compressed</span>
+        <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">fileinput</span><span class="o">.</span><span class="n">FileInput</span><span class="p">(</span><span class="n">options_filename</span><span class="p">,</span> <span class="n">openhook</span><span class="o">=</span><span class="n">hook</span><span class="p">):</span>  
+            <span class="n">line_number</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">recs</span> <span class="o">=</span> <span class="p">[</span><span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">strip</span><span class="p">())]</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="c"># maybe a missing line feed?</span>
+                    <span class="n">recs</span> <span class="o">=</span> <span class="p">[</span><span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&quot;}{&quot;</span><span class="p">,</span> <span class="s">&quot;}GNIP_SPLIT{&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;GNIP_SPLIT&quot;</span><span class="p">)]</span>
+                <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                    <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;Invalid JSON record (</span><span class="si">%d</span><span class="s">) </span><span class="si">%s</span><span class="s">, skipping</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">line_number</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">strip</span><span class="p">()))</span>
+                    <span class="k">continue</span>
+            <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">recs</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">record</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="k">yield</span> <span class="n">line_number</span><span class="p">,</span> <span class="n">record</span>
+
+</div>
 <div class="viewcode-block" id="AcsCSV.cleanField"><a class="viewcode-back" href="../../basic_csv.html#acscsv.acscsv.AcsCSV.cleanField">[docs]</a>    <span class="k">def</span> <span class="nf">cleanField</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">f</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Clean fields of new lines and delmiter.&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
@@ -107,11 +254,18 @@
                 <span class="p">)</span>
 </div>
 <div class="viewcode-block" id="AcsCSV.buildListString"><a class="viewcode-back" href="../../basic_csv.html#acscsv.acscsv.AcsCSV.buildListString">[docs]</a>    <span class="k">def</span> <span class="nf">buildListString</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">l</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Genereic list builder returns a string represenation of list&quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;Generic list builder returns a string representation of list&quot;&quot;&quot;</span>
         <span class="c"># unicode output of list (without u&#39;s)</span>
         <span class="n">res</span> <span class="o">=</span> <span class="s">&#39;[&#39;</span>
         <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">l</span><span class="p">:</span>
-            <span class="n">res</span> <span class="o">+=</span> <span class="s">&quot;&#39;&quot;</span> <span class="o">+</span> <span class="n">r</span> <span class="o">+</span> <span class="s">&quot;&#39;,&quot;</span>
+            <span class="c"># handle the various types of lists we might see</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="n">res</span> <span class="o">+=</span> <span class="s">&quot;&#39;&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">buildListString</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot;&#39;,&quot;</span>
+            <span class="c">#elif isinstance(r, str):</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="nb">unicode</span><span class="p">):</span>
+                <span class="n">res</span> <span class="o">+=</span> <span class="s">&quot;&#39;&quot;</span> <span class="o">+</span> <span class="n">r</span> <span class="o">+</span> <span class="s">&quot;&#39;,&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">res</span> <span class="o">+=</span> <span class="s">&quot;&#39;&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot;&#39;,&quot;</span>
         <span class="k">if</span> <span class="n">res</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">):</span>
             <span class="n">res</span> <span class="o">=</span> <span class="n">res</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
         <span class="n">res</span> <span class="o">+=</span> <span class="s">&#39;]&#39;</span>
@@ -125,26 +279,33 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">x</span>
 </div>
-<div class="viewcode-block" id="AcsCSV.asString"><a class="viewcode-back" href="../../basic_csv.html#acscsv.acscsv.AcsCSV.asString">[docs]</a>    <span class="k">def</span> <span class="nf">asString</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">l</span><span class="p">):</span>
+<div class="viewcode-block" id="AcsCSV.asString"><a class="viewcode-back" href="../../basic_csv.html#acscsv.acscsv.AcsCSV.asString">[docs]</a>    <span class="k">def</span> <span class="nf">asString</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">emptyField</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Returns a delimited list object as a properly delimited string.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">l</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">None</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">l</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">x</span> <span class="o">==</span> <span class="n">INTERNAL_EMPTY_FIELD</span><span class="p">:</span>
+                <span class="n">l</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">emptyField</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">delim</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">l</span><span class="p">)</span>
 </div>
-<div class="viewcode-block" id="AcsCSV.procRecord"><a class="viewcode-back" href="../../basic_csv.html#acscsv.acscsv.AcsCSV.procRecord">[docs]</a>    <span class="k">def</span> <span class="nf">procRecord</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cnt</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<div class="viewcode-block" id="AcsCSV.get_source_list"><a class="viewcode-back" href="../../basic_csv.html#acscsv.acscsv.AcsCSV.get_source_list">[docs]</a>    <span class="k">def</span> <span class="nf">get_source_list</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Wrapper for the core activity parsing function.&quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cnt</span> <span class="o">=</span> <span class="n">cnt</span>
         <span class="n">source_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">procRecordToList</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">options_keypath</span><span class="p">:</span>
             <span class="n">source_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">keyPath</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
         <span class="c"># ensure no pipes, newlines, etc</span>
         <span class="c">#TODO: remove calls to cleanField() in submodules</span>
         <span class="n">source_list</span> <span class="o">=</span> <span class="p">[</span> <span class="bp">self</span><span class="o">.</span><span class="n">cleanField</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">source_list</span> <span class="p">]</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">asString</span><span class="p">(</span><span class="n">source_list</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">source_list</span>
+
 </div>
-<div class="viewcode-block" id="AcsCSV.asGeoJSON"><a class="viewcode-back" href="../../basic_csv.html#acscsv.acscsv.AcsCSV.asGeoJSON">[docs]</a>    <span class="k">def</span> <span class="nf">asGeoJSON</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cnt</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">procRecord</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">emptyField</span><span class="o">=</span><span class="s">&quot;None&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">asString</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_source_list</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">emptyField</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="AcsCSV.asGeoJSON"><a class="viewcode-back" href="../../basic_csv.html#acscsv.acscsv.AcsCSV.asGeoJSON">[docs]</a>    <span class="k">def</span> <span class="nf">asGeoJSON</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Get results as GeoJSON representation.&quot;&quot;&quot;</span>
-        <span class="n">recordList</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">procRecordToList</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">record_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">procRecordToList</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;TwacsCSV&quot;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">options_geo</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">geoCoordsList</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
                 <span class="k">return</span>
@@ -153,7 +314,16 @@
             <span class="n">lon_lat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">geo_coords_list</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">{</span><span class="s">&quot;Error&quot;</span><span class="p">:</span><span class="s">&quot;This publisher doesn&#39;t have geo&quot;</span><span class="p">}</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s">&quot;type&quot;</span><span class="p">:</span> <span class="s">&quot;Feature&quot;</span><span class="p">,</span> <span class="s">&quot;geometry&quot;</span><span class="p">:</span> <span class="p">{</span> <span class="s">&quot;type&quot;</span><span class="p">:</span> <span class="s">&quot;Point&quot;</span><span class="p">,</span> <span class="s">&quot;coordinates&quot;</span><span class="p">:</span> <span class="n">lon_lat</span> <span class="p">},</span> <span class="s">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s">&quot;id&quot;</span><span class="p">:</span> <span class="n">recordList</span><span class="p">[</span><span class="mi">0</span><span class="p">]}</span> <span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span> 
+                <span class="s">&quot;type&quot;</span><span class="p">:</span> <span class="s">&quot;Feature&quot;</span>
+                <span class="p">,</span> <span class="s">&quot;geometry&quot;</span><span class="p">:</span> <span class="p">{</span> 
+                                <span class="s">&quot;type&quot;</span><span class="p">:</span> <span class="s">&quot;Point&quot;</span>
+                                <span class="p">,</span> <span class="s">&quot;coordinates&quot;</span><span class="p">:</span> <span class="n">lon_lat</span> 
+                              <span class="p">}</span>
+                <span class="p">,</span> <span class="s">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+                                <span class="s">&quot;id&quot;</span><span class="p">:</span> <span class="n">record_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                                <span class="p">}</span> 
+                <span class="p">}</span>
     </div>
 <div class="viewcode-block" id="AcsCSV.keyPath"><a class="viewcode-back" href="../../basic_csv.html#acscsv.acscsv.AcsCSV.keyPath">[docs]</a>    <span class="k">def</span> <span class="nf">keyPath</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">d</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Get a generic key path specified at run time.&quot;&quot;&quot;</span>
