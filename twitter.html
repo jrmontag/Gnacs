@@ -56,7 +56,31 @@
   <div class="section" id="twitter-model">
 <h1>Twitter Model<a class="headerlink" href="#twitter-model" title="Permalink to this headline">¶</a></h1>
 <blockquote>
-<div></div></blockquote>
+<div><span class="target" id="module-acscsv.twitter_acs"></span><dl class="class">
+<dt id="acscsv.twitter_acs.TwacsCSV">
+<em class="property">class </em><tt class="descclassname">acscsv.twitter_acs.</tt><tt class="descname">TwacsCSV</tt><big>(</big><em>delim</em>, <em>options_keypath</em>, <em>options_geo</em>, <em>options_user</em>, <em>options_rules</em>, <em>options_urls</em>, <em>options_lang</em>, <em>options_influence</em>, <em>options_struct</em><big>)</big><a class="reference internal" href="_modules/acscsv/twitter_acs.html#TwacsCSV"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acscsv.twitter_acs.TwacsCSV" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subset of Twitter fields with specified delimiter.  Please see help for options</p>
+<dl class="method">
+<dt id="acscsv.twitter_acs.TwacsCSV.get_output_list">
+<tt class="descname">get_output_list</tt><big>(</big><em>d</em><big>)</big><a class="reference internal" href="_modules/acscsv/twitter_acs.html#TwacsCSV.get_output_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acscsv.twitter_acs.TwacsCSV.get_output_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>Take a JSON Activity Streams payload as a Python dictionary. Specify the particular 
+output fields (and their order) by constructing and returning a list of the 
+desired extractor values. Default values for missing fields are set in the _Field class 
+and can be overridden.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="acscsv.twitter_acs.TwacsCSV.procRecordToList">
+<tt class="descname">procRecordToList</tt><big>(</big><em>d</em><big>)</big><a class="reference internal" href="_modules/acscsv/twitter_acs.html#TwacsCSV.procRecordToList"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acscsv.twitter_acs.TwacsCSV.procRecordToList" title="Permalink to this definition">¶</a></dt>
+<dd><p>Take a JSON Activity Streams payload as a Python dictionary. Check activity for system 
+information and compliance handling. If necessary, return the system info or compliance 
+message. Otherwise, if the activity is valid, return the result of calling the 
+appropriate output() method.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div></blockquote>
 </div>
 
 
