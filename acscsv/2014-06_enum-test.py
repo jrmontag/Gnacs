@@ -18,9 +18,6 @@ import twitter_acs
 
 
 
-#
-# edit the subclass here, as needed (eg inherit from twitter_acs.TwacsCSV)
-#
 class CustomCSV( twitter_acs.TwacsCSV ):
     """
     Test class for experimenting with new output combinations. This class should inherit
@@ -55,15 +52,17 @@ class CustomCSV( twitter_acs.TwacsCSV ):
         #output_list.append( Field_favoritescount(d).value )  
         #output_list.append( Field_retweetcount(d).value )  
         #output_list.append( Field_twitter_filter_level(d).value )  
-        output_list.append( Field_inreplyto_link(d).value )  
+        #output_list.append( Field_inreplyto_link(d).value )  
+        #output_list.append( Field_provider_objecttype(d).value )  
+        #output_list.append( Field_provider_displayname(d).value )  
+        #output_list.append( Field_provider_link(d).value )  
+        #output_list.append( Field_generator_displayname(d).value )  
+        #output_list.append( Field_generator_link(d).value )  
+        #output_list.append( str(Field_gnip_rules(d).value) )  
+        output_list.append( str(Field_gnip_urls(d).value) )  
 
 
 
-#        Field_provider_objecttype
-#        Field_provider_displayname
-#        Field_provider_link
-#        Field_generator_displayname
-#        Field_generator_link
 #        Field_gnip_rules
 #        Field_gnip_urls
 #        Field_gnip_language_value
