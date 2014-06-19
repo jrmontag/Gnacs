@@ -36,77 +36,68 @@ class CustomCSV( twitter_acs.TwacsCSV ):
         """
         output_list = [] 
 
-        # test all the things 
+        # TEST ALL THE THINGS! 
 
-        #print >>sys.stderr, "*** object={}".format(Field_object(d).value)
-
-        #output_list.append( Field_activity_type(d).value ) 
-        #output_list.append( Field_verb(d).value ) 
-        #output_list.append( Field_id(d).value ) 
-        #output_list.append( Field_objecttype(d).value ) 
-        #output_list.append( str(Field_object(d).value) ) 
-        #output_list.append( Field_postedtime(d).value )  
-        #output_list.append( Field_body(d).value )  
-        #output_list.append( Field_link(d).value )  
-        #output_list.append( Field_twitter_lang(d).value )  
-        #output_list.append( Field_favoritescount(d).value )  
-        #output_list.append( Field_retweetcount(d).value )  
-        #output_list.append( Field_twitter_filter_level(d).value )  
-        #output_list.append( Field_inreplyto_link(d).value )  
-        #output_list.append( Field_provider_objecttype(d).value )  
-        #output_list.append( Field_provider_displayname(d).value )  
-        #output_list.append( Field_provider_link(d).value )  
-        #output_list.append( Field_generator_displayname(d).value )  
-        #output_list.append( Field_generator_link(d).value )  
-        #output_list.append( str(Field_gnip_rules(d).value) )  
+        output_list.append( Field_activity_type(d).value ) 
+        output_list.append( Field_verb(d).value ) 
+        output_list.append( Field_id(d).value ) 
+        output_list.append( Field_objecttype(d).value ) 
+        output_list.append( str(Field_object(d).value) ) 
+        output_list.append( Field_postedtime(d).value )  
+        output_list.append( Field_body(d).value )  
+        output_list.append( Field_link(d).value )  
+        output_list.append( Field_twitter_lang(d).value )  
+        output_list.append( Field_favoritescount(d).value )  
+        output_list.append( Field_retweetcount(d).value )  
+        output_list.append( Field_twitter_filter_level(d).value )  
+        output_list.append( Field_inreplyto_link(d).value )  
+        output_list.append( Field_provider_objecttype(d).value )  
+        output_list.append( Field_provider_displayname(d).value )  
+        output_list.append( Field_provider_link(d).value )  
+        output_list.append( Field_generator_displayname(d).value )  
+        output_list.append( Field_generator_link(d).value )  
+        output_list.append( str(Field_gnip_rules(d).value) )  
         output_list.append( str(Field_gnip_urls(d).value) )  
-
-
-
-#        Field_gnip_rules
-#        Field_gnip_urls
-#        Field_gnip_language_value
-#        Field_gnip_klout_score
-#        Field_gnip_klout_profile_topics
-#        Field_gnip_klout_profile_klout_user_id
-#        Field_gnip_klout_profile_link
-#        Field_actor_id
-#        Field_actor_objecttype
-#        Field_actor_postedtime
-#        Field_actor_displayname
-#        Field_actor_preferredusername
-#        Field_actor_summary
-#        Field_actor_link
-#        Field_actor_image
-#        Field_actor_language
-#        Field_actor_links
-#        Field_actor_twittertimezone
-#        Field_actor_utcoffset
-#        Field_actor_verified
-#        Field_actor_location_displayname
-#        Field_actor_location_objecttype
-#        Field_actor_followerscount
-#        Field_actor_friendscount
-#        Field_actor_listedcount
-#        Field_actor_statusesCount
-#        Field_actor_favoritesCount
-#        Field_twitter_entities_urls
-#        Field_twitter_entities_hashtags
-#        Field_twitter_entities_symbols
-#        Field_twitter_entities_user_mentions
-#        Field_twitter_entities_media
-#        Field_geo_type
-#        Field_geo_coordinates
-#        Field_location_displayname
-#        Field_location_name
-#        Field_location_objecttype
-#        Field_location_twitter_country_code
-#        Field_location_country_code
-#        Field_location_link
-#        Field_location_geo_type
-#        Field_location_geo_coordinates
-
-
+        output_list.append( Field_gnip_language_value(d).value )  
+        output_list.append( Field_gnip_klout_score(d).value )  
+        output_list.append( str(Field_gnip_klout_profile_topics(d).value) )  
+        output_list.append( str(Field_gnip_klout_profile_klout_user_id(d).value) )  
+        output_list.append( str(Field_gnip_klout_profile_link(d).value) )  
+        output_list.append( Field_actor_id(d).value )  
+        output_list.append( Field_actor_objecttype(d).value )  
+        output_list.append( Field_actor_postedtime(d).value )  
+        output_list.append( Field_actor_displayname(d).value )  
+        output_list.append( Field_actor_preferredusername(d).value )  
+        output_list.append( Field_actor_summary(d).value )  
+        output_list.append( Field_actor_link(d).value )  
+        output_list.append( Field_actor_image(d).value )  
+        output_list.append( Field_actor_language(d).value )  
+        output_list.append( str(Field_actor_links(d).value) )  
+        output_list.append( Field_actor_twittertimezone(d).value )  
+        output_list.append( Field_actor_utcoffset(d).value )  
+        output_list.append( Field_actor_verified(d).value )  
+        output_list.append( Field_actor_location_displayname(d).value )  
+        output_list.append( Field_actor_location_objecttype(d).value )  
+        output_list.append( Field_actor_followerscount(d).value )  
+        output_list.append( Field_actor_friendscount(d).value )  
+        output_list.append( Field_actor_listedcount(d).value )  
+        output_list.append( Field_actor_statusesCount(d).value )  
+        output_list.append( Field_actor_favoritesCount(d).value )  
+        output_list.append( str(Field_twitter_entities_urls(d).value) )  
+        output_list.append( str(Field_twitter_entities_hashtags(d).value) )  
+        output_list.append( str(Field_twitter_entities_symbols(d).value) )  
+        output_list.append( str(Field_twitter_entities_user_mentions(d).value) )  
+        output_list.append( str(Field_twitter_entities_media(d).value) )  
+        output_list.append( Field_geo_type(d).value )  
+        output_list.append( str(Field_geo_coordinates(d).value) )  
+        output_list.append( Field_location_displayname(d).value )  
+        output_list.append( Field_location_name(d).value )  
+        output_list.append( Field_location_objecttype(d).value )  
+        output_list.append( Field_location_twitter_country_code(d).value )  
+        output_list.append( Field_location_country_code(d).value )  
+        output_list.append( Field_location_link(d).value )  
+        output_list.append( Field_location_geo_type(d).value )  
+        output_list.append( str(Field_location_geo_coordinates(d).value) )  
 
         # done building output list 
         return output_list 
