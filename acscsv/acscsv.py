@@ -50,7 +50,7 @@ class _Field(object):
         res = json_record
         for k in self.path:
             if k not in res or ( type(res[k]) is list and len(res[k]) == 0 ):
-                # parenthetical clause for values with empty lists e.g. twitter_entities
+                # parenthetical clause checks for empty lists e.g. twitter_entities
                 return self.default_value
             res = res[k]
         # handle the special case where the walk_path found null (JSON) which converts to 
