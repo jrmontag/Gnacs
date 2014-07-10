@@ -57,6 +57,9 @@
 <span class="kn">import</span> <span class="nn">datetime</span>
 <span class="kn">import</span> <span class="nn">fileinput</span>
 <span class="kn">from</span> <span class="nn">StringIO</span> <span class="kn">import</span> <span class="n">StringIO</span>
+<span class="c"># Experimental: Use numba to speed up some fo the basic function</span>
+<span class="c"># that are run many times per record</span>
+<span class="c"># from numba import jit</span>
 <span class="c"># use fastest option available</span>
 <span class="k">try</span><span class="p">:</span>
     <span class="kn">import</span> <span class="nn">ujson</span> <span class="kn">as</span> <span class="nn">json</span>
@@ -66,13 +69,24 @@
     <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
         <span class="kn">import</span> <span class="nn">simplejson</span> <span class="kn">as</span> <span class="nn">json</span>
 
-
-
 <span class="n">gnipError</span> <span class="o">=</span> <span class="s">&quot;GNIPERROR&quot;</span>
 <span class="n">gnipRemove</span> <span class="o">=</span> <span class="s">&quot;GNIPREMOVE&quot;</span>
 <span class="n">gnipDateTime</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s">&quot;%Y-%m-</span><span class="si">%d</span><span class="s">T%H:%M:%S.000Z&quot;</span><span class="p">)</span>
 <span class="n">INTERNAL_EMPTY_FIELD</span> <span class="o">=</span> <span class="s">&quot;GNIPEMPTYFIELD&quot;</span>
 
+<div class="viewcode-block" id="Singleton"><a class="viewcode-back" href="../../basic_csv.html#acscsv.acscsv.Singleton">[docs]</a><span class="k">class</span> <span class="nc">Singleton</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Singleton class is the base class for every field.  Each object is reused to process the</span>
+<span class="sd">    stream of data before an object is deleted.  This keeps memory management from thrashing</span>
+<span class="sd">    for long input streams.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_instances</span> <span class="o">=</span> <span class="p">{}</span>                                                               
+    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="n">class_</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">class_</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">class_</span><span class="o">.</span><span class="n">_instances</span><span class="p">:</span>
+            <span class="n">class_</span><span class="o">.</span><span class="n">_instances</span><span class="p">[</span><span class="n">class_</span><span class="p">]</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">Singleton</span><span class="p">,</span> <span class="n">class_</span><span class="p">)</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">class_</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">class_</span><span class="o">.</span><span class="n">_instances</span><span class="p">[</span><span class="n">class_</span><span class="p">]</span>
+
+<span class="c">#class _Field(Singleton):</span></div>
 <span class="k">class</span> <span class="nc">_Field</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Base class for extracting the desired value at the end of a series of keys in a JSON Activity </span>
@@ -85,20 +99,29 @@
     <span class="c"># twitter format</span>
     <span class="n">default_t_fmt</span> <span class="o">=</span> <span class="s">&quot;%Y-%m-</span><span class="si">%d</span><span class="s">T%H:%M:%S.000Z&quot;</span> 
     <span class="n">default_value</span> <span class="o">=</span> <span class="n">INTERNAL_EMPTY_FIELD</span>
-    <span class="c">#default_value = &quot;\\N&quot;           # escaped \N ==&gt; MySQL NULL</span>
-    <span class="n">value</span> <span class="o">=</span> <span class="bp">None</span>                    <span class="c"># str representation of the field, often = str( self.value_list ) </span>
-    <span class="n">value_list</span> <span class="o">=</span> <span class="p">[</span> <span class="n">default_value</span> <span class="p">]</span>  <span class="c"># overwrite when value is most appropriately a list </span>
     <span class="n">path</span> <span class="o">=</span> <span class="p">[]</span>                       <span class="c"># dict key-path to follow for desired value</span>
 
+    <span class="n">label</span> <span class="o">=</span> <span class="s">&#39;DummyKeyPathLabel&#39;</span>         <span class="c"># this must match if-statement in constructor</span>
+
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">json_record</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">walk_path</span><span class="p">(</span><span class="n">json_record</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">label</span> <span class="o">==</span> <span class="s">&#39;DummyKeyPathLabel&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="s">&#39;:&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="bp">None</span>                    <span class="c"># str representation of the field, often = str( self.value_list ) </span>
+        <span class="k">if</span> <span class="n">json_record</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">walk_path</span><span class="p">(</span><span class="n">json_record</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_value</span>
 
     <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">return</span> <span class="nb">unicode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">walk_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">json_record</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">walk_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">json_record</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="n">res</span> <span class="o">=</span> <span class="n">json_record</span>
-        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">path</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">res</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">break</span>
             <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">res</span> <span class="ow">or</span> <span class="p">(</span> <span class="nb">type</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="ow">is</span> <span class="nb">list</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">):</span>
                 <span class="c"># parenthetical clause for values with empty lists e.g. twitter_entities</span>
                 <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_value</span>
@@ -106,6 +129,18 @@
         <span class="c"># handle the special case where the walk_path found null (JSON) which converts to </span>
         <span class="c"># a Python None. Only use &quot;None&quot; (str version) if it&#39;s assigned to self.default_value </span>
         <span class="n">res</span> <span class="o">=</span> <span class="n">res</span> <span class="k">if</span> <span class="n">res</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_value</span>
+        <span class="k">return</span> <span class="n">res</span>
+    
+    <span class="k">def</span> <span class="nf">walk_path_slower</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">json_record</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">execstr</span> <span class="o">=</span> <span class="s">&quot;res=json_record&quot;</span> <span class="o">+</span> <span class="s">&#39;[&quot;{}&quot;]&#39;</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+            <span class="k">exec</span><span class="p">(</span><span class="n">execstr</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">*</span><span class="n">path</span><span class="p">))</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">KeyError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="n">res</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_value</span>
         <span class="k">return</span> <span class="n">res</span>
 
     <span class="k">def</span> <span class="nf">fix_length</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">iterable</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
@@ -158,12 +193,11 @@
 <span class="sd">    to overwrite the fields list ( fields=[&quot;a&quot;, &quot;b&quot;] ) to obtain this result. </span>
 <span class="sd">    Finally, self.value is set to a string representation of the final self.value_list.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">fields</span> <span class="o">=</span> <span class="bp">None</span> 
-    
     <span class="c">#TODO: set limit=None by default and just return as many as there are, otherwise (by specifying </span>
     <span class="c">#    limit), return a maximum of limit.</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">json_record</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fields</span> <span class="o">=</span> <span class="bp">None</span>
         <span class="nb">super</span><span class="p">(</span>
             <span class="n">_LimitedField</span> 
             <span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">json_record</span><span class="p">)</span>
@@ -182,41 +216,35 @@
 
 <span class="c"># TODO:</span>
 <span class="c"># - consolidate _LimitedField() &amp; fix_length() if possible </span>
-<span class="c"># - replace 2-level dict traversal (eg profileLocation base class) with acscsv.walk_path() or </span>
-<span class="c">#       similar helper method </span>
 
-<div class="viewcode-block" id="Hook_StringIO"><a class="viewcode-back" href="../../basic_csv.html#acscsv.acscsv.Hook_StringIO">[docs]</a><span class="k">class</span> <span class="nc">Hook_StringIO</span><span class="p">():</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Reverse-engineer the openhook constructor to accept StringIO. Pass the StringIO object </span>
-<span class="sd">    through so FileInput will read a string. Think of it as a stupid version of open() that </span>
-<span class="sd">    returns the thing it&#39;s passed.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stringio</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">stringio</span> <span class="o">=</span> <span class="n">stringio</span>
-
-    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Note that x and y are ignored - they&#39;re only included to match the signature of </span>
-<span class="sd">        FileInput&#39;s openhook argument.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stringio</span>
-
-</div>
+    
 <div class="viewcode-block" id="AcsCSV"><a class="viewcode-back" href="../../basic_csv.html#acscsv.acscsv.AcsCSV">[docs]</a><span class="k">class</span> <span class="nc">AcsCSV</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Base class for all delimited list objects. Basic delimited list utility functions&quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delim</span><span class="p">,</span> <span class="n">options_keypath</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">delim</span> <span class="o">=</span> <span class="n">delim</span>
         <span class="k">if</span> <span class="n">delim</span> <span class="o">==</span> <span class="s">&quot;&quot;</span><span class="p">:</span>
             <span class="k">print</span> <span class="o">&gt;&gt;</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;Warning - Output has Null delimiter&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rmchars</span> <span class="o">=</span> <span class="s">&quot;</span><span class="se">\n\r</span><span class="s"> {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">delim</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">options_keypath</span> <span class="o">=</span> <span class="n">options_keypath</span>
-
-
-<div class="viewcode-block" id="AcsCSV.file_reader"><a class="viewcode-back" href="../../basic_csv.html#acscsv.acscsv.AcsCSV.file_reader">[docs]</a>    <span class="k">def</span> <span class="nf">file_reader</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">options_filename</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Read arbitrary input file(s), yield individual record lines.&quot;&quot;&quot;</span>
+        
+<div class="viewcode-block" id="AcsCSV.string_hook"><a class="viewcode-back" href="../../basic_csv.html#acscsv.acscsv.AcsCSV.string_hook">[docs]</a>    <span class="k">def</span> <span class="nf">string_hook</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">record_string</span><span class="p">,</span> <span class="n">mode_dummy</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns a file-like StringIO object built from the activity record in record_string.</span>
+<span class="sd">        This is ultimately passed down to the FileInput.readline() method. The mode_dummy </span>
+<span class="sd">        parameter is only included so the signature matches other hooks. </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">StringIO</span><span class="p">(</span> <span class="n">record_string</span> <span class="p">)</span> 
+</div>
+<div class="viewcode-block" id="AcsCSV.file_reader"><a class="viewcode-back" href="../../basic_csv.html#acscsv.acscsv.AcsCSV.file_reader">[docs]</a>    <span class="k">def</span> <span class="nf">file_reader</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">options_filename</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">json_string</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read arbitrary input file(s) or standard Python str. When passing file_reader() a </span>
+<span class="sd">        JSON string, assign it to the json_string arg. Yields a tuple of (line number, record).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">line_number</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">options_filename</span><span class="p">,</span> <span class="n">StringIO</span><span class="p">):</span>
-            <span class="n">hook</span> <span class="o">=</span> <span class="n">Hook_StringIO</span><span class="p">(</span><span class="n">options_filename</span><span class="p">)</span> 
+        <span class="k">if</span> <span class="n">json_string</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span> 
+            <span class="n">hook</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">string_hook</span> 
+            <span class="n">options_filename</span> <span class="o">=</span> <span class="n">json_string</span> 
         <span class="k">else</span><span class="p">:</span>
             <span class="n">hook</span> <span class="o">=</span> <span class="n">fileinput</span><span class="o">.</span><span class="n">hook_compressed</span>
         <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">fileinput</span><span class="o">.</span><span class="n">FileInput</span><span class="p">(</span><span class="n">options_filename</span><span class="p">,</span> <span class="n">openhook</span><span class="o">=</span><span class="n">hook</span><span class="p">):</span>  
@@ -226,33 +254,40 @@
             <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="c"># maybe a missing line feed?</span>
-                    <span class="n">recs</span> <span class="o">=</span> <span class="p">[</span><span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&quot;}{&quot;</span><span class="p">,</span> <span class="s">&quot;}GNIP_SPLIT{&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;GNIP_SPLIT&quot;</span><span class="p">)]</span>
+                    <span class="n">recs</span> <span class="o">=</span> <span class="p">[</span><span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&quot;}{&quot;</span><span class="p">,</span> <span class="s">&quot;}GNIP_SPLIT{&quot;</span><span class="p">)</span>
+                        <span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;GNIP_SPLIT&quot;</span><span class="p">)]</span>
                 <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
-                    <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;Invalid JSON record (</span><span class="si">%d</span><span class="s">) </span><span class="si">%s</span><span class="s">, skipping</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">line_number</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">strip</span><span class="p">()))</span>
+                    <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;Invalid JSON record (</span><span class="si">%d</span><span class="s">) </span><span class="si">%s</span><span class="s">, skipping</span><span class="se">\n</span><span class="s">&quot;</span>
+                        <span class="o">%</span><span class="p">(</span><span class="n">line_number</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">strip</span><span class="p">()))</span>
                     <span class="k">continue</span>
             <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">recs</span><span class="p">:</span>
                 <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">record</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
                     <span class="k">continue</span>
+                <span class="c"># hack: let the old source modules still have a self.cnt for error msgs</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cnt</span> <span class="o">=</span> <span class="n">line_number</span>
                 <span class="k">yield</span> <span class="n">line_number</span><span class="p">,</span> <span class="n">record</span>
-
 </div>
 <div class="viewcode-block" id="AcsCSV.cleanField"><a class="viewcode-back" href="../../basic_csv.html#acscsv.acscsv.AcsCSV.cleanField">[docs]</a>    <span class="k">def</span> <span class="nf">cleanField</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">f</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Clean fields of new lines and delmiter.&quot;&quot;&quot;</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">INTERNAL_EMPTY_FIELD</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="c"># odd edge case that f is a number</span>
-            <span class="c"># then can&#39;t call string functions</span>
-            <span class="nb">float</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-            <span class="n">f</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
-            <span class="k">pass</span>
-        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
-            <span class="n">f</span> <span class="o">=</span> <span class="s">&quot;None&quot;</span>
-        <span class="k">return</span> <span class="n">f</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span>
                 <span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="s">&quot; &quot;</span>
                 <span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\r</span><span class="s">&quot;</span><span class="p">,</span><span class="s">&quot; &quot;</span>
                 <span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">delim</span><span class="p">,</span> <span class="s">&quot; &quot;</span>
                 <span class="p">)</span>
-</div>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c"># odd edge case that f is a number</span>
+                <span class="c"># then can&#39;t call string functions</span>
+                <span class="nb">float</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+                <span class="n">res</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+                <span class="k">pass</span>
+        <span class="k">return</span> <span class="n">res</span>
+
+    <span class="c">#Experimental </span>
+    <span class="c">#@jit</span></div>
 <div class="viewcode-block" id="AcsCSV.buildListString"><a class="viewcode-back" href="../../basic_csv.html#acscsv.acscsv.AcsCSV.buildListString">[docs]</a>    <span class="k">def</span> <span class="nf">buildListString</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">l</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Generic list builder returns a string representation of list&quot;&quot;&quot;</span>
         <span class="c"># unicode output of list (without u&#39;s)</span>
@@ -270,7 +305,9 @@
             <span class="n">res</span> <span class="o">=</span> <span class="n">res</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
         <span class="n">res</span> <span class="o">+=</span> <span class="s">&#39;]&#39;</span>
         <span class="k">return</span> <span class="n">res</span>
-</div>
+
+    <span class="c">#Experimental </span>
+    <span class="c">#@jit</span></div>
 <div class="viewcode-block" id="AcsCSV.splitId"><a class="viewcode-back" href="../../basic_csv.html#acscsv.acscsv.AcsCSV.splitId">[docs]</a>    <span class="k">def</span> <span class="nf">splitId</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Generic functions for splitting id parts&quot;&quot;&quot;</span>
         <span class="n">tmp</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;/&quot;</span><span class="p">)</span>
@@ -294,9 +331,7 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">options_keypath</span><span class="p">:</span>
             <span class="n">source_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">keyPath</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
         <span class="c"># ensure no pipes, newlines, etc</span>
-        <span class="c">#TODO: remove calls to cleanField() in submodules</span>
-        <span class="n">source_list</span> <span class="o">=</span> <span class="p">[</span> <span class="bp">self</span><span class="o">.</span><span class="n">cleanField</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">source_list</span> <span class="p">]</span>
-        <span class="k">return</span> <span class="n">source_list</span>
+        <span class="k">return</span> <span class="p">[</span> <span class="bp">self</span><span class="o">.</span><span class="n">cleanField</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">source_list</span> <span class="p">]</span>
 
 </div>
     <span class="k">def</span> <span class="nf">procRecord</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">emptyField</span><span class="o">=</span><span class="s">&quot;None&quot;</span><span class="p">):</span>
@@ -316,19 +351,19 @@
             <span class="k">return</span> <span class="p">{</span><span class="s">&quot;Error&quot;</span><span class="p">:</span><span class="s">&quot;This publisher doesn&#39;t have geo&quot;</span><span class="p">}</span>
         <span class="k">return</span> <span class="p">{</span> 
                 <span class="s">&quot;type&quot;</span><span class="p">:</span> <span class="s">&quot;Feature&quot;</span>
-                <span class="p">,</span> <span class="s">&quot;geometry&quot;</span><span class="p">:</span> <span class="p">{</span> 
-                                <span class="s">&quot;type&quot;</span><span class="p">:</span> <span class="s">&quot;Point&quot;</span>
-                                <span class="p">,</span> <span class="s">&quot;coordinates&quot;</span><span class="p">:</span> <span class="n">lon_lat</span> 
-                              <span class="p">}</span>
-                <span class="p">,</span> <span class="s">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
-                                <span class="s">&quot;id&quot;</span><span class="p">:</span> <span class="n">record_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-                                <span class="p">}</span> 
+                <span class="p">,</span> <span class="s">&quot;geometry&quot;</span><span class="p">:</span> <span class="p">{</span> <span class="s">&quot;type&quot;</span><span class="p">:</span> <span class="s">&quot;Point&quot;</span><span class="p">,</span> <span class="s">&quot;coordinates&quot;</span><span class="p">:</span> <span class="n">lon_lat</span> <span class="p">}</span>
+                <span class="p">,</span> <span class="s">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span> <span class="s">&quot;id&quot;</span><span class="p">:</span> <span class="n">record_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="p">}</span> 
                 <span class="p">}</span>
     </div>
 <div class="viewcode-block" id="AcsCSV.keyPath"><a class="viewcode-back" href="../../basic_csv.html#acscsv.acscsv.AcsCSV.keyPath">[docs]</a>    <span class="k">def</span> <span class="nf">keyPath</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">d</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Get a generic key path specified at run time.&quot;&quot;&quot;</span>
-        <span class="n">key_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">options_keypath</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;:&quot;</span><span class="p">)</span>
-        <span class="n">key_stack</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">options_keypath</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;:&quot;</span><span class="p">)</span>
+        <span class="c">#key_list = self.options_keypath.split(&quot;:&quot;)</span>
+        <span class="n">delim</span> <span class="o">=</span> <span class="s">&quot;:&quot;</span>
+        <span class="c">#print &gt;&gt; sys.stderr, &quot;self.__class__ &quot; + str(self.__class__)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;NGacsCSV&quot;</span><span class="p">:</span>
+            <span class="n">delim</span> <span class="o">=</span> <span class="s">&quot;,&quot;</span>
+        <span class="n">key_stack</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">options_keypath</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">delim</span><span class="p">)</span>
+        <span class="c">#print &gt;&gt; sys.stderr, &quot;key_stack &quot; + str(key_stack)</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">d</span>
         <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">key_stack</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
@@ -340,13 +375,10 @@
                     <span class="n">idx</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
                 <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
             <span class="k">except</span> <span class="p">(</span><span class="ne">IndexError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;Keypath error at </span><span class="si">%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">%</span><span class="n">k</span><span class="p">)</span>
+                <span class="c">#sys.stderr.write(&quot;Keypath error at %s\n&quot;%k)</span>
                 <span class="k">return</span> <span class="s">&quot;PATH_EMPTY&quot;</span>
-        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-</div></div>
-<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
-    <span class="n">unittest</span><span class="o">.</span><span class="n">main</span><span class="p">()</span>
-</pre></div>
+        <span class="k">return</span> <span class="nb">unicode</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</pre></div></div></div>
 
           </div>
         </div>

@@ -191,8 +191,6 @@
 			<span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">geo</span>
 			<span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">user</span>
 			<span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">rules</span>
-			<span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">lang</span>
-			<span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">struct</span>
             <span class="p">)</span>
     <span class="k">elif</span> <span class="n">options</span><span class="o">.</span><span class="n">pub</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&quot;get&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">options</span><span class="o">.</span><span class="n">pub</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&quot;gg&quot;</span><span class="p">):</span>
         <span class="n">processing_obj</span> <span class="o">=</span> <span class="n">getglue_acs</span><span class="o">.</span><span class="n">GgacsCSV</span><span class="p">(</span><span class="n">delim</span>
@@ -211,6 +209,7 @@
             <span class="p">)</span>
     <span class="k">elif</span> <span class="n">options</span><span class="o">.</span><span class="n">pub</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&quot;st&quot;</span><span class="p">):</span>
         <span class="n">processing_obj</span> <span class="o">=</span> <span class="n">stocktwits_acs</span><span class="o">.</span><span class="n">StacsCSV</span><span class="p">(</span><span class="n">delim</span>
+			<span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">keypath</span>
 			<span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">user</span>
 			<span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">struct</span>
 			<span class="p">,</span> <span class="n">options</span><span class="o">.</span><span class="n">influence</span>
@@ -255,10 +254,11 @@
                     <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">geo_rec</span><span class="p">))</span>
                     <span class="n">first_geo</span> <span class="o">=</span> <span class="bp">False</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="c">#sys.stdout.write(&quot;%s\n&quot;%processing_obj.procRecord(record, emptyField=&quot;None&quot;))</span>
+                <span class="c"># ensure formatter is working on a unicode object </span>
                 <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">u&quot;{}</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">processing_obj</span><span class="o">.</span><span class="n">procRecord</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">emptyField</span><span class="o">=</span><span class="s">&quot;None&quot;</span><span class="p">)))</span>
         <span class="c"># handle I/O exceptions associated with writing to stdout (e.g. when output is piped to &#39;head&#39;)</span>
-        <span class="k">except</span> <span class="ne">IOError</span><span class="p">:</span>
+        <span class="c"># TODO: handle this via contextmanager (within AcsCSV)? </span>
+        <span class="k">except</span> <span class="ne">IOError</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
             <span class="k">except</span> <span class="ne">IOError</span><span class="p">:</span>
@@ -268,12 +268,6 @@
             <span class="k">except</span> <span class="ne">IOError</span><span class="p">:</span>
                 <span class="k">pass</span>
             <span class="k">break</span>
-        <span class="c"># add a fix for this at the source!</span>
-<span class="c">#        except UnicodeEncodeError, e:</span>
-<span class="c">#            sys.stderr.write(&quot;UnicodeEncodeError: error={} ({})\n&quot;.format(e, line_number))</span>
-            
-            <span class="c">## use this if you want to see the full troublesome records  </span>
-            <span class="c">#sys.stderr.write(&quot;Bad unicode encoding: error={} ({}), record={}\n&quot;.format(e, line_number, record))</span>
     <span class="c"># close the geojson data structure</span>
     <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">geojson</span><span class="p">:</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;]}</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>            

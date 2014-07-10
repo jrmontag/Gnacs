@@ -54,6 +54,7 @@
 
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">acscsv</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
 <span class="kn">from</span> <span class="nn">twitter_acs_fields</span> <span class="kn">import</span> <span class="o">*</span>
 
 <div class="viewcode-block" id="TwacsCSV"><a class="viewcode-back" href="../../twitter.html#acscsv.twitter_acs.TwacsCSV">[docs]</a><span class="k">class</span> <span class="nc">TwacsCSV</span><span class="p">(</span><span class="n">acscsv</span><span class="o">.</span><span class="n">AcsCSV</span><span class="p">):</span>
@@ -78,7 +79,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">options_lang</span> <span class="o">=</span> <span class="n">options_lang</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">options_influence</span> <span class="o">=</span> <span class="n">options_influence</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">options_struct</span> <span class="o">=</span> <span class="n">options_struct</span>
-        
+        <span class="c"># pre-create all of teh objects needed for parsing</span>
+        <span class="c">#for name, obj in inspect.getmembers(sys.modules[__name__]):</span>
+        <span class="c">#    if name.startswith(&quot;Field_&quot;):</span>
+        <span class="c">#        setattr(self, name.lower()+&quot;_&quot;, obj(None))</span>
 
 <div class="viewcode-block" id="TwacsCSV.procRecordToList"><a class="viewcode-back" href="../../twitter.html#acscsv.twitter_acs.TwacsCSV.procRecordToList">[docs]</a>    <span class="k">def</span> <span class="nf">procRecordToList</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">d</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -179,8 +183,8 @@
                 <span class="n">output_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> 
                     <span class="bp">self</span><span class="o">.</span><span class="n">buildListString</span><span class="p">(</span> 
                         <span class="p">[</span> <span class="s">&quot;{} ({})&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="n">x</span><span class="p">[</span><span class="s">&quot;value&quot;</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="s">&quot;tag&quot;</span><span class="p">]</span> <span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">Field_gnip_rules</span><span class="p">(</span><span class="n">d</span><span class="p">)</span><span class="o">.</span><span class="n">value</span> <span class="p">]</span>
-                    <span class="p">)</span>
-                <span class="p">)</span> 
+                        <span class="p">)</span>
+                    <span class="p">)</span> 
             <span class="k">else</span><span class="p">:</span> 
                 <span class="n">output_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">val</span> <span class="p">)</span>  
 

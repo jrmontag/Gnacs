@@ -86,8 +86,9 @@
 
 <dl class="method">
 <dt id="acscsv.acscsv.AcsCSV.file_reader">
-<tt class="descname">file_reader</tt><big>(</big><em>options_filename=None</em><big>)</big><a class="reference internal" href="_modules/acscsv/acscsv.html#AcsCSV.file_reader"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acscsv.acscsv.AcsCSV.file_reader" title="Permalink to this definition">¶</a></dt>
-<dd><p>Read arbitrary input file(s), yield individual record lines.</p>
+<tt class="descname">file_reader</tt><big>(</big><em>options_filename=None</em>, <em>json_string=None</em><big>)</big><a class="reference internal" href="_modules/acscsv/acscsv.html#AcsCSV.file_reader"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acscsv.acscsv.AcsCSV.file_reader" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read arbitrary input file(s) or standard Python str. When passing file_reader() a 
+JSON string, assign it to the json_string arg. Yields a tuple of (line number, record).</p>
 </dd></dl>
 
 <dl class="method">
@@ -108,14 +109,22 @@
 <dd><p>Generic functions for splitting id parts</p>
 </dd></dl>
 
+<dl class="method">
+<dt id="acscsv.acscsv.AcsCSV.string_hook">
+<tt class="descname">string_hook</tt><big>(</big><em>record_string</em>, <em>mode_dummy</em><big>)</big><a class="reference internal" href="_modules/acscsv/acscsv.html#AcsCSV.string_hook"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acscsv.acscsv.AcsCSV.string_hook" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a file-like StringIO object built from the activity record in record_string.
+This is ultimately passed down to the FileInput.readline() method. The mode_dummy 
+parameter is only included so the signature matches other hooks.</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="class">
-<dt id="acscsv.acscsv.Hook_StringIO">
-<em class="property">class </em><tt class="descclassname">acscsv.acscsv.</tt><tt class="descname">Hook_StringIO</tt><big>(</big><em>stringio</em><big>)</big><a class="reference internal" href="_modules/acscsv/acscsv.html#Hook_StringIO"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acscsv.acscsv.Hook_StringIO" title="Permalink to this definition">¶</a></dt>
-<dd><p>Reverse-engineer the openhook constructor to accept StringIO. Pass the StringIO object 
-through so FileInput will read a string. Think of it as a stupid version of open() that 
-returns the thing it&#8217;s passed.</p>
+<dt id="acscsv.acscsv.Singleton">
+<em class="property">class </em><tt class="descclassname">acscsv.acscsv.</tt><tt class="descname">Singleton</tt><a class="reference internal" href="_modules/acscsv/acscsv.html#Singleton"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#acscsv.acscsv.Singleton" title="Permalink to this definition">¶</a></dt>
+<dd><p>Singleton class is the base class for every field.  Each object is reused to process the
+stream of data before an object is deleted.  This keeps memory management from thrashing
+for long input streams.</p>
 </dd></dl>
 
 </div></blockquote>
